@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>OSRM + OSM</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/@mapbox/polyline"></script>
+</head>
+<body>
+<div id="map" style="width: 800px; height: 600px;"></div>
+<script>
+  var map = L.map('map').setView([49.114, 6.18], 14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
+
+  // polyline OSRM
+  var polylineStr = "wrxjHeeud@oEtIcByFcAl@gD{LoCoFU}DqDeIu@oF`OkD`GuDpEOlD{CjCi@~QtA`FnEtDyFbBEr@f@lF`JdBk@jAV";
+
+  // décoder la polyline en array de lat/lng
+  var coords = polyline.decode(polylineStr);
+
+  // inverser les coordonnées pour Leaflet [lat, lng]
+  coords = coords.map(function(c) { return [c[0], c[1]]; });
+
+  L.polyline(coords, {color: 'blue'}).addTo(map);
+</script>
+</body>
+</html>
