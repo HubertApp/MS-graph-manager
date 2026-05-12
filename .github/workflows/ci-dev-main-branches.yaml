@@ -1,0 +1,43 @@
+# name: "CI Main & Develop branches"
+
+
+# on:
+#   push:
+#     branches:
+#       - main
+#       - develop
+#   pull_request:
+#     branches:
+#       - main
+#       - develop
+#     paths-ignore:
+#       - '**.md'
+
+# jobs:
+#   quality-gate:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+#         with:
+#           fetch-depth: 0
+
+#       - name: Setup Python
+#         uses: actions/setup-python@v4
+#         with:
+#           python-version: '3.11'
+
+#       - name: Cache pip
+#         uses: actions/cache@v4
+#         with:
+#           path: ~/.cache/pip
+#           key: "${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}"
+
+#       - name: Install, Lint and Test
+#         run: make validate
+
+#       - name: SonarCloud Scan
+#         uses: SonarSource/sonarcloud-github-action@v1
+#         env:
+#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
