@@ -7,7 +7,7 @@ Pouvoir rechercher un itinéraire grâce à des coordonnées géographiques et �
 ## Prérequis
 
 - Python 3.10+
-- Docker (pour OSRM)
+- Docker (pour OSRM, et en option pour lancer le service lui-même en conteneur)
 
 ## Installation
 
@@ -32,15 +32,15 @@ Créer un fichier `.env` à la racine du projet :
 OSRM_BASE_URL=http://localhost:5000
 TRAFFIC_INFO_URL=
 PREDICTIVE_INFO_URL=
-CPP_ROUTER_URL=
+CPP_ROUTER_GRPC_TARGET=localhost:50051
 TRACKING_SERVICE_URL=
-GRAPH_COMPRESSION_EDGE_THRESHOLD=2000
 OSMNX_GRAPH_MARGIN_M=1500
 ```
 
-Les URLs supplémentaires sont optionnelles :
+Les URLs/adresses supplémentaires sont optionnelles :
 - si absentes, le service reste fonctionnel en mode local simplifié (facteurs = 1.0, calcul fallback Python)
-- si présentes, elles activent respectivement les ajustements trafic, prédictifs, le calcul C++ et la notification de suivi d'itinéraire
+- si présentes, elles activent respectivement les ajustements trafic, prédictifs, la notification de suivi d'itinéraire
+- `CPP_ROUTER_GRPC_TARGET` pointe vers le service de routage C++ (gRPC, `host:port`) ; si injoignable, le calcul retombe automatiquement sur le plus court chemin déjà calculé localement (osmnx/OSRM)
 
 ### Note sur OSMnx
 
@@ -83,6 +83,22 @@ uvicorn app.main:app --reload
 L'API est accessible sur : **http://localhost:8000**
 
 L'interface GraphQL (GraphiQL) est accessible sur : **http://localhost:8000/graphql**
+
+### 3. Alternative : lancer le service en conteneur
+
+```bash
+docker build -t ms-graph-manager .
+docker run -p 8003:80 --env-file .env ms-graph-manager
+```
+
+Ou via `docker-compose.yml` (service `graph-manager` + un service `osrm` optionnel, qui
+suppose des données déjà extraites dans `./osrm-data`, voir étape 1 ci-dessus) :
+
+```bash
+docker compose up --build
+```
+
+L'API est alors accessible sur **http://localhost:8003/graphql**.
 
 ## Queries GraphQL principales
 

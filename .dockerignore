@@ -1,0 +1,17 @@
+.venv/
+venv/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.git/
+.github/
+.pytest_cache/
+.coverage
+htmlcov/
+.tmp_external_reviews/
+.vscode/
+.idea/
+.env
+.env.*
+tests/
+README.md
