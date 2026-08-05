@@ -5,3 +5,5 @@ httpx
 python-dotenv
 osmnx
 grpcio
+grpcio-tools
+protobuf
