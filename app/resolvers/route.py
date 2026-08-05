@@ -1,3 +1,4 @@
+import logging
 import uuid
 import strawberry
 from typing import List, Optional
@@ -17,6 +18,8 @@ from app.services.osmnx_graph import build_osmnx_snapshot_and_path
 from app.services.traffic_client import get_predictive_factor, get_realtime_factor
 from app.models.route import Route, Geometry, Step
 from app.config import OSMNX_GRAPH_MARGIN_M
+
+logger = logging.getLogger(__name__)
 
 
 async def _select_edge_ids(
@@ -151,12 +154,20 @@ class RouteQuery:
             geometry_coordinates = osmnx_result["geometry_coordinates"]
             front_steps = osmnx_result["front_steps"]
         else:
+            if request.routing_profile.lower() != "driving":
+                logger.warning(
+                    "osmnx unavailable, falling back to the OSRM driving route for a "
+                    "'%s' request: geometry will follow car-suitable roads, only the "
+                    "duration/weight estimate is adjusted for the requested profile",
+                    request.routing_profile,
+                )
+
             raw_route = await fetch_route(
                 request.start_point.lat,
                 request.start_point.lon,
                 request.end_point.lat,
                 request.end_point.lon,
-            ) 
+            )
             if not raw_route:
                 return None
 

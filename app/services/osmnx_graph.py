@@ -1,7 +1,10 @@
+import logging
 import math
 from typing import Dict, List, Optional, Tuple
 
 from app.models.itinerary import EdgeDTO, FrontStepDTO, NodeDTO, RoutingGraphSnapshot
+
+logger = logging.getLogger(__name__)
 
 Coordinate = Tuple[float, float]
 
@@ -208,6 +211,7 @@ def build_osmnx_snapshot_and_path(
         import networkx as nx
         import osmnx as ox
     except ImportError:
+        logger.debug("networkx/osmnx not installed; skipping osmnx routing path")
         return None
 
     friction_by_tile = friction_by_tile or {}
@@ -231,15 +235,26 @@ def build_osmnx_snapshot_and_path(
             simplify=True,
         )
     except Exception:
+        logger.warning(
+            "osmnx graph_from_bbox failed for bbox=(%s,%s,%s,%s) network_type=%s; "
+            "falling back to OSRM",
+            north, south, east, west, network_type, exc_info=True,
+        )
         return None
 
     if graph.number_of_nodes() == 0 or graph.number_of_edges() == 0:
+        logger.warning(
+            "osmnx returned an empty graph for bbox=(%s,%s,%s,%s) network_type=%s; "
+            "falling back to OSRM",
+            north, south, east, west, network_type,
+        )
         return None
 
     try:
         start_node = ox.distance.nearest_nodes(graph, X=start_lon, Y=start_lat)
         end_node = ox.distance.nearest_nodes(graph, X=end_lon, Y=end_lat)
     except Exception:
+        logger.warning("osmnx nearest_nodes failed; falling back to OSRM", exc_info=True)
         return None
 
     layer = 2 if routing_profile.lower() in {"transit", "multimodal"} else 1
@@ -262,6 +277,10 @@ def build_osmnx_snapshot_and_path(
             weight="_effective_weight",
         )
     except Exception:
+        logger.warning(
+            "no path between osm nodes %s and %s; falling back to OSRM",
+            start_node, end_node, exc_info=True,
+        )
         return None
 
     selected_edge_ids, front_steps = _extract_selected_path(
@@ -273,6 +292,10 @@ def build_osmnx_snapshot_and_path(
     )
 
     if not selected_edge_ids:
+        logger.warning(
+            "shortest path between %s and %s produced no usable edges; falling back to OSRM",
+            start_node, end_node,
+        )
         return None
 
     geometry_coordinates = [

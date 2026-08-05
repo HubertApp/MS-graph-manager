@@ -5,13 +5,11 @@ from typing import List, Optional
 
 import grpc
 
+from app.config import CPP_ROUTER_GRPC_TARGET
 from app.models.itinerary import RoutingGraphSnapshot
 from app.proto import astar_pb2, astar_pb2_grpc
 
 logger = logging.getLogger(__name__)
-
-GRPC_ROUTER_HOST = "localhost"
-GRPC_ROUTER_PORT = 50051
 
 
 async def compute_itinerary_with_cpp(
@@ -54,8 +52,8 @@ def _compute_itinerary_with_cpp_sync(
         return None
 
     try:
-        # Create gRPC channel (insecure for localhost testing)
-        channel = grpc.insecure_channel(f"{GRPC_ROUTER_HOST}:{GRPC_ROUTER_PORT}")
+        # Create gRPC channel (insecure; router is expected on a trusted internal network)
+        channel = grpc.insecure_channel(CPP_ROUTER_GRPC_TARGET)
         stub = astar_pb2_grpc.AStarServiceStub(channel)
 
         # Convert snapshot nodes/edges to proto messages
@@ -107,8 +105,8 @@ def _compute_itinerary_with_cpp_sync(
         return edge_ids
 
     except grpc.RpcError as e:
-        logger.error(f"gRPC error: {e.code()}: {e.details()}")
+        logger.exception(f"gRPC error: {e.code()}: {e.details()}")
         return None
-    except Exception as e:
-        logger.error(f"Unexpected error in C++ routing: {e}")
+    except Exception:
+        logger.exception("Unexpected error in C++ routing")
         return None
