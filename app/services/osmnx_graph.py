@@ -137,6 +137,7 @@ def _build_edges(
         edge_index = len(edges)
         edges.append(
             EdgeDTO(
+                edge_id=f"osm_{u}_{v}_{key}",
                 source_id=source_index,
                 target_id=target_index,
                 weight=effective_weight,
@@ -288,4 +289,6 @@ def build_osmnx_snapshot_and_path(
         "selected_edge_ids": selected_edge_ids,
         "geometry_coordinates": geometry_coordinates,
         "front_steps": front_steps,
+        "start_node_index": node_index_map[start_node],
+        "end_node_index": node_index_map[end_node],
     }

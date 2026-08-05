@@ -107,6 +107,7 @@ def build_multilayer_snapshot(
 
         edges.append(
             EdgeDTO(
+                edge_id=f"synthetic_{index}",
                 source_id=index,
                 target_id=index + 1,
                 weight=weight,

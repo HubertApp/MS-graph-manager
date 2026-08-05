@@ -43,6 +43,7 @@ class NodeDTO:
 @strawberry.type
 class EdgeDTO:
     """Graph edge with multilayer support."""
+    edge_id: str  # Unique identifier (e.g., "osm_12345" or "gtfs_line_5_seg_2")
     source_id: int
     target_id: int
     weight: float

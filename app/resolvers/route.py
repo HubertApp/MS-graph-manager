@@ -1,3 +1,4 @@
+import uuid
 import strawberry
 from typing import List, Optional
 
@@ -16,6 +17,31 @@ from app.services.osmnx_graph import build_osmnx_snapshot_and_path
 from app.services.traffic_client import get_predictive_factor, get_realtime_factor
 from app.models.route import Route, Geometry, Step
 from app.config import OSMNX_GRAPH_MARGIN_M
+
+
+async def _select_edge_ids(
+    graph_snapshot,
+    start_node_id: int,
+    end_node_id: int,
+    default_edge_ids: List[int],
+) -> List[int]:
+    """Ask the C++ A* router for a path, mapping its edge_id strings back to
+    indices into graph_snapshot.edges. Falls back to default_edge_ids (the
+    path already computed locally) if the router is unavailable or returns
+    edge_ids we can't map."""
+    cpp_edge_ids = await compute_itinerary_with_cpp(
+        graph_snapshot,
+        start_node_id,
+        end_node_id,
+        graph_id=str(uuid.uuid4()),
+    )
+
+    if not cpp_edge_ids:
+        return default_edge_ids
+
+    edge_id_to_index = {edge.edge_id: index for index, edge in enumerate(graph_snapshot.edges)}
+    resolved = [edge_id_to_index[eid] for eid in cpp_edge_ids if eid in edge_id_to_index]
+    return resolved or default_edge_ids
 
 
 @strawberry.type
@@ -110,10 +136,11 @@ class RouteQuery:
         if osmnx_result:
             graph_snapshot = osmnx_result["snapshot"]
             default_edge_ids = osmnx_result["selected_edge_ids"]
-            selected_edge_ids = await compute_itinerary_with_cpp(
+            selected_edge_ids = await _select_edge_ids(
                 graph_snapshot,
-                request,
-                default_edge_ids=default_edge_ids,
+                osmnx_result["start_node_index"],
+                osmnx_result["end_node_index"],
+                default_edge_ids,
             )
 
             selected_edges = [graph_snapshot.edges[edge_id] for edge_id in selected_edge_ids]
@@ -143,10 +170,11 @@ class RouteQuery:
             )
 
             default_edge_ids = list(range(len(graph_snapshot.edges)))
-            selected_edge_ids = await compute_itinerary_with_cpp(
+            selected_edge_ids = await _select_edge_ids(
                 graph_snapshot,
-                request,
-                default_edge_ids=default_edge_ids,
+                0,
+                len(graph_snapshot.nodes) - 1,
+                default_edge_ids,
             )
 
             selected_edges = [graph_snapshot.edges[edge_id] for edge_id in selected_edge_ids]

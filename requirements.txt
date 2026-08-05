@@ -4,3 +4,4 @@ strawberry-graphql
 httpx
 python-dotenv
 osmnx
+grpcio
