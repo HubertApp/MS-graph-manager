@@ -16,8 +16,8 @@ GRPC_ROUTER_PORT = 50051
 
 async def compute_itinerary_with_cpp(
     snapshot: RoutingGraphSnapshot,
-    start_node_id: int,
-    end_node_id: int,
+    start_node_id: str,
+    end_node_id: str,
     graph_id: str = "default",
 ) -> Optional[List[str]]:
     """Async wrapper: runs the blocking gRPC call off the event loop."""
@@ -28,19 +28,19 @@ async def compute_itinerary_with_cpp(
 
 def _compute_itinerary_with_cpp_sync(
     snapshot: RoutingGraphSnapshot,
-    start_node_id: int,
-    end_node_id: int,
+    start_node_id: str,
+    end_node_id: str,
     graph_id: str = "default",
 ) -> Optional[List[str]]:
     """
     Send graph to C++ A* service via gRPC and solve.
-    
+
     Args:
         snapshot: RoutingGraphSnapshot with nodes and edges
-        start_node_id: index of start node in snapshot.nodes
-        end_node_id: index of end node in snapshot.nodes
+        start_node_id: NodeDTO.id of the start node in snapshot.nodes
+        end_node_id: NodeDTO.id of the end node in snapshot.nodes
         graph_id: unique graph identifier
-    
+
     Returns:
         List of edge IDs on the path, or None if routing fails
     """
@@ -48,8 +48,9 @@ def _compute_itinerary_with_cpp_sync(
         logger.warning("Empty graph snapshot; cannot route")
         return None
 
-    if start_node_id >= len(snapshot.nodes) or end_node_id >= len(snapshot.nodes):
-        logger.warning("Invalid start/end node indices")
+    known_node_ids = {n.id for n in snapshot.nodes}
+    if start_node_id not in known_node_ids or end_node_id not in known_node_ids:
+        logger.warning("Invalid start/end node ids")
         return None
 
     try:
@@ -59,11 +60,11 @@ def _compute_itinerary_with_cpp_sync(
 
         # Convert snapshot nodes/edges to proto messages
         proto_nodes = [
-            astar_pb2.Node(id=str(n.id), lat=n.lat, lon=n.lon)
+            astar_pb2.Node(id=n.id, lat=n.lat, lon=n.lon)
             for n in snapshot.nodes
         ]
         proto_edges = [
-            astar_pb2.Edge(from_id=str(e.source_id), to_id=str(e.target_id), weight=e.weight)
+            astar_pb2.Edge(from_id=e.source_id, to_id=e.target_id, weight=e.weight)
             for e in snapshot.edges
         ]
 
@@ -79,8 +80,8 @@ def _compute_itinerary_with_cpp_sync(
         # Solve for shortest path
         solve_req = astar_pb2.SolveRequest(
             graph_id=graph_id,
-            start_id=str(start_node_id),
-            goal_id=str(end_node_id),
+            start_id=start_node_id,
+            goal_id=end_node_id,
             use_asm=True  # Use ASM optimization if available
         )
         solve_resp = stub.Solve(solve_req)
@@ -93,8 +94,8 @@ def _compute_itinerary_with_cpp_sync(
         # Map path (node IDs) back to edge IDs
         edge_ids = []
         for i in range(len(solve_resp.path) - 1):
-            from_id = int(solve_resp.path[i])
-            to_id = int(solve_resp.path[i + 1])
+            from_id = solve_resp.path[i]
+            to_id = solve_resp.path[i + 1]
 
             # Find edge with matching source/target
             for edge in snapshot.edges:

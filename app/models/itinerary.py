@@ -34,7 +34,7 @@ class FrictionUpdateDTO:
 @strawberry.type
 class NodeDTO:
     """Graph node representation."""
-    id: int
+    id: str  # Traceable id, e.g. "osm:123456" or "gtfs:stop_42"
     lat: float
     lon: float
     is_transit_stop: bool
@@ -44,8 +44,8 @@ class NodeDTO:
 class EdgeDTO:
     """Graph edge with multilayer support."""
     edge_id: str  # Unique identifier (e.g., "osm_12345" or "gtfs_line_5_seg_2")
-    source_id: int
-    target_id: int
+    source_id: str  # Matches the source NodeDTO.id
+    target_id: str  # Matches the target NodeDTO.id
     weight: float
     length: float
     layer: int

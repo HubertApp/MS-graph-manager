@@ -80,7 +80,7 @@ def build_multilayer_snapshot(
         lon, lat = coord
         nodes.append(
             NodeDTO(
-                id=index,
+                id=f"synthetic:{index}",
                 lat=lat,
                 lon=lon,
                 is_transit_stop=(layer == 2 and index % 8 == 0),
@@ -108,8 +108,8 @@ def build_multilayer_snapshot(
         edges.append(
             EdgeDTO(
                 edge_id=f"synthetic_{index}",
-                source_id=index,
-                target_id=index + 1,
+                source_id=f"synthetic:{index}",
+                target_id=f"synthetic:{index + 1}",
                 weight=weight,
                 length=length_m,
                 layer=layer,

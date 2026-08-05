@@ -21,8 +21,8 @@ from app.config import OSMNX_GRAPH_MARGIN_M
 
 async def _select_edge_ids(
     graph_snapshot,
-    start_node_id: int,
-    end_node_id: int,
+    start_node_id: str,
+    end_node_id: str,
     default_edge_ids: List[int],
 ) -> List[int]:
     """Ask the C++ A* router for a path, mapping its edge_id strings back to
@@ -138,8 +138,8 @@ class RouteQuery:
             default_edge_ids = osmnx_result["selected_edge_ids"]
             selected_edge_ids = await _select_edge_ids(
                 graph_snapshot,
-                osmnx_result["start_node_index"],
-                osmnx_result["end_node_index"],
+                osmnx_result["start_node_id"],
+                osmnx_result["end_node_id"],
                 default_edge_ids,
             )
 
@@ -172,8 +172,8 @@ class RouteQuery:
             default_edge_ids = list(range(len(graph_snapshot.edges)))
             selected_edge_ids = await _select_edge_ids(
                 graph_snapshot,
-                0,
-                len(graph_snapshot.nodes) - 1,
+                graph_snapshot.nodes[0].id,
+                graph_snapshot.nodes[-1].id,
                 default_edge_ids,
             )
 

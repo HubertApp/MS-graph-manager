@@ -73,7 +73,7 @@ def _build_nodes(graph, layer: int) -> Tuple[List[NodeDTO], Dict[int, int], List
         node_data = graph.nodes[node_id]
         nodes.append(
             NodeDTO(
-                id=node_index_map[node_id],
+                id=f"osm:{node_id}",
                 lat=float(node_data["y"]),
                 lon=float(node_data["x"]),
                 is_transit_stop=(layer == 2 and node_index_map[node_id] % 11 == 0),
@@ -100,7 +100,6 @@ def _resolve_edge_length_m(graph, u: int, v: int, data: Dict, ox) -> float:
 
 def _build_edges(
     graph,
-    node_index_map: Dict[int, int],
     routing_profile: str,
     layer: int,
     friction_by_tile: Dict[str, float],
@@ -113,8 +112,6 @@ def _build_edges(
     edge_names: Dict[int, str] = {}
 
     for u, v, key, data in graph.edges(keys=True, data=True):
-        source_index = node_index_map[u]
-        target_index = node_index_map[v]
         source_coord = (float(graph.nodes[u]["x"]), float(graph.nodes[u]["y"]))
         length_m = _resolve_edge_length_m(graph, u, v, data, ox)
 
@@ -138,8 +135,8 @@ def _build_edges(
         edges.append(
             EdgeDTO(
                 edge_id=f"osm_{u}_{v}_{key}",
-                source_id=source_index,
-                target_id=target_index,
+                source_id=f"osm:{u}",
+                target_id=f"osm:{v}",
                 weight=effective_weight,
                 length=length_m,
                 layer=layer,
@@ -246,10 +243,9 @@ def build_osmnx_snapshot_and_path(
         return None
 
     layer = 2 if routing_profile.lower() in {"transit", "multimodal"} else 1
-    nodes, node_index_map, _ = _build_nodes(graph, layer)
+    nodes, _, _ = _build_nodes(graph, layer)
     edges, edge_index_map, edge_names = _build_edges(
         graph=graph,
-        node_index_map=node_index_map,
         routing_profile=routing_profile,
         layer=layer,
         friction_by_tile=friction_by_tile,
@@ -289,6 +285,6 @@ def build_osmnx_snapshot_and_path(
         "selected_edge_ids": selected_edge_ids,
         "geometry_coordinates": geometry_coordinates,
         "front_steps": front_steps,
-        "start_node_index": node_index_map[start_node],
-        "end_node_index": node_index_map[end_node],
+        "start_node_id": f"osm:{start_node}",
+        "end_node_id": f"osm:{end_node}",
     }
