@@ -227,10 +227,7 @@ def build_osmnx_snapshot_and_path(
 
     try:
         graph = ox.graph_from_bbox(
-            north=north,
-            south=south,
-            east=east,
-            west=west,
+            (west, south, east, north),
             network_type=network_type,
             simplify=True,
         )

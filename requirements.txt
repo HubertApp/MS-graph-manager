@@ -4,6 +4,7 @@ strawberry-graphql
 httpx
 python-dotenv
 osmnx
+scikit-learn
 grpcio
 grpcio-tools
 protobuf

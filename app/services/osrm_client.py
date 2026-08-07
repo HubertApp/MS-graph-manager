@@ -1,5 +1,9 @@
+import logging
+
 import httpx
 from app.config import OSRM_BASE_URL
+
+logger = logging.getLogger(__name__)
 
 
 async def fetch_route(from_lat, from_lon, to_lat, to_lon):
@@ -14,8 +18,12 @@ async def fetch_route(from_lat, from_lon, to_lat, to_lon):
         f"?overview=full&geometries=geojson&steps=true"
     )
 
-    async with httpx.AsyncClient(timeout=10) as client:
-        response = await client.get(url)
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(url)
+    except httpx.HTTPError:
+        logger.warning("OSRM unreachable at %s", OSRM_BASE_URL, exc_info=True)
+        return None
 
     if response.status_code != 200:
         return None
