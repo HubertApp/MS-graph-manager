@@ -5,7 +5,7 @@ import warnings
 
 from . import astar_pb2 as astar__pb2
 
-GRPC_GENERATED_VERSION = '1.81.1'
+GRPC_GENERATED_VERSION = '1.83.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -34,11 +34,6 @@ class AStarServiceStub:
         Args:
             channel: A grpc.Channel.
         """
-        self.StoreGraph = channel.unary_unary(
-                '/astar.proto.AStarService/StoreGraph',
-                request_serializer=astar__pb2.GraphRequest.SerializeToString,
-                response_deserializer=astar__pb2.StoreResponse.FromString,
-                _registered_method=True)
         self.Solve = channel.unary_unary(
                 '/astar.proto.AStarService/Solve',
                 request_serializer=astar__pb2.SolveRequest.SerializeToString,
@@ -49,12 +44,6 @@ class AStarServiceStub:
 class AStarServiceServicer:
     """Missing associated documentation comment in .proto file."""
 
-    def StoreGraph(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
     def Solve(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -64,11 +53,6 @@ class AStarServiceServicer:
 
 def add_AStarServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'StoreGraph': grpc.unary_unary_rpc_method_handler(
-                    servicer.StoreGraph,
-                    request_deserializer=astar__pb2.GraphRequest.FromString,
-                    response_serializer=astar__pb2.StoreResponse.SerializeToString,
-            ),
             'Solve': grpc.unary_unary_rpc_method_handler(
                     servicer.Solve,
                     request_deserializer=astar__pb2.SolveRequest.FromString,
@@ -84,33 +68,6 @@ def add_AStarServiceServicer_to_server(servicer, server):
  # This class is part of an EXPERIMENTAL API.
 class AStarService:
     """Missing associated documentation comment in .proto file."""
-
-    @staticmethod
-    def StoreGraph(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/astar.proto.AStarService/StoreGraph',
-            astar__pb2.GraphRequest.SerializeToString,
-            astar__pb2.StoreResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
 
     @staticmethod
     def Solve(request,

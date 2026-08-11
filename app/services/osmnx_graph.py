@@ -2,7 +2,7 @@ import logging
 import math
 from typing import Dict, List, Optional, Tuple
 
-from app.models.itinerary import EdgeDTO, FrontStepDTO, NodeDTO, RoutingGraphSnapshot
+from app.models.itinerary import EdgeDTO, NodeDTO, RoutingGraphSnapshot
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +132,10 @@ def _build_edges(
             * max(predictive_factor, 0.1)
         )
 
-        data["_effective_weight"] = effective_weight
+        edge_name = data.get("name")
+        if isinstance(edge_name, list):
+            edge_name = edge_name[0] if edge_name else ""
+        edge_name = str(edge_name or "Continue")
 
         edge_index = len(edges)
         edges.append(
@@ -140,63 +143,19 @@ def _build_edges(
                 edge_id=f"osm_{u}_{v}_{key}",
                 source_id=f"osm:{u}",
                 target_id=f"osm:{v}",
-                weight=effective_weight,
-                length=length_m,
+                weight=effective_weight,   # SECONDES
+                length=length_m,           # METRES
                 layer=layer,
+                name=edge_name,            # sert aux instructions apres resolution
             )
         )
         edge_index_map[(u, v, key)] = edge_index
-
-        edge_name = data.get("name")
-        if isinstance(edge_name, list):
-            edge_name = edge_name[0] if edge_name else ""
-        edge_names[edge_index] = str(edge_name or "Continue")
+        edge_names[edge_index] = edge_name
 
     return edges, edge_index_map, edge_names
 
 
-def _extract_selected_path(
-    graph,
-    shortest_path_nodes: List[int],
-    edge_index_map: Dict[Tuple[int, int, int], int],
-    edge_names: Dict[int, str],
-    edges: List[EdgeDTO],
-) -> Tuple[List[int], List[FrontStepDTO]]:
-    selected_edge_ids: List[int] = []
-    front_steps: List[FrontStepDTO] = []
-
-    for path_index in range(len(shortest_path_nodes) - 1):
-        u = shortest_path_nodes[path_index]
-        v = shortest_path_nodes[path_index + 1]
-        candidates = graph.get_edge_data(u, v)
-        if not candidates:
-            continue
-
-        best_key = min(
-            candidates,
-            key=lambda candidate_key, candidates=candidates: float(
-                candidates[candidate_key].get("_effective_weight", float("inf"))
-            ),
-        )
-
-        edge_index = edge_index_map.get((u, v, best_key))
-        if edge_index is None:
-            continue
-
-        selected_edge_ids.append(edge_index)
-        selected_edge = edges[edge_index]
-        front_steps.append(
-            FrontStepDTO(
-                instruction=edge_names.get(edge_index, "Continue"),
-                distance_m=selected_edge.length,
-                duration_s=selected_edge.weight,
-            )
-        )
-
-    return selected_edge_ids, front_steps
-
-
-def build_osmnx_snapshot_and_path(
+def build_osmnx_snapshot(
     start_lat: float,
     start_lon: float,
     end_lat: float,
@@ -208,10 +167,9 @@ def build_osmnx_snapshot_and_path(
     margin_m: float = 1500.0,
 ) -> Optional[dict]:
     try:
-        import networkx as nx
         import osmnx as ox
     except ImportError:
-        logger.debug("networkx/osmnx not installed; skipping osmnx routing path")
+        logger.debug("osmnx non installe ; bascule sur le flux OSRM")
         return None
 
     friction_by_tile = friction_by_tile or {}
@@ -256,7 +214,7 @@ def build_osmnx_snapshot_and_path(
 
     layer = 2 if routing_profile.lower() in {"transit", "multimodal"} else 1
     nodes, _, _ = _build_nodes(graph, layer)
-    edges, edge_index_map, edge_names = _build_edges(
+    edges, _, _ = _build_edges(
         graph=graph,
         routing_profile=routing_profile,
         layer=layer,
@@ -266,45 +224,14 @@ def build_osmnx_snapshot_and_path(
         ox=ox,
     )
 
-    try:
-        shortest_path_nodes = nx.shortest_path(
-            graph,
-            source=start_node,
-            target=end_node,
-            weight="_effective_weight",
-        )
-    except Exception:
-        logger.warning(
-            "no path between osm nodes %s and %s; falling back to OSRM",
-            start_node, end_node, exc_info=True,
-        )
-        return None
-
-    selected_edge_ids, front_steps = _extract_selected_path(
-        graph=graph,
-        shortest_path_nodes=shortest_path_nodes,
-        edge_index_map=edge_index_map,
-        edge_names=edge_names,
-        edges=edges,
+    logger.info(
+        "graphe construit : %d noeuds, %d aretes (profil=%s)",
+        len(nodes), len(edges), routing_profile,
     )
 
-    if not selected_edge_ids:
-        logger.warning(
-            "shortest path between %s and %s produced no usable edges; falling back to OSRM",
-            start_node, end_node,
-        )
-        return None
-
-    geometry_coordinates = [
-        [float(graph.nodes[node_id]["x"]), float(graph.nodes[node_id]["y"])]
-        for node_id in shortest_path_nodes
-    ]
-
+    # Aucune resolution ici : le chemin est calcule par le service C++.
     return {
         "snapshot": RoutingGraphSnapshot(nodes=nodes, edges=edges),
-        "selected_edge_ids": selected_edge_ids,
-        "geometry_coordinates": geometry_coordinates,
-        "front_steps": front_steps,
         "start_node_id": f"osm:{start_node}",
         "end_node_id": f"osm:{end_node}",
     }

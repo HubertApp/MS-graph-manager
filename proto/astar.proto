@@ -1,44 +1,33 @@
 syntax = "proto3";
 package astar.proto;
 
+
 service AStarService {
-  rpc StoreGraph (GraphRequest) returns (StoreResponse);
   rpc Solve (SolveRequest) returns (SolveResponse);
 }
 
 message Node {
-  string id = 1;
+  string id  = 1;
   double lat = 2;
-  double lon = 3;
+  double lon = 3; 
 }
 
 message Edge {
   string from_id = 1;
-  string to_id = 2;
-  double weight = 3;
-}
-
-message GraphRequest {
-  string graph_id = 1;
-  repeated Node nodes = 2;
-  repeated Edge edges = 3;
-}
-
-message StoreResponse {
-  bool success = 1;
-  string message = 2;
+  string to_id   = 2;
+  double weight  = 3;
 }
 
 message SolveRequest {
-  string graph_id = 1;
-  string start_id = 2;
-  string goal_id = 3;
-  bool use_asm = 4;
+  repeated Node nodes    = 1;
+  repeated Edge edges    = 2;
+  string        start_id = 3;
+  string        goal_id  = 4;
 }
 
 message SolveResponse {
-  bool found = 1;
-  repeated string path = 2;
-  double total_cost = 3;
-  uint64 nodes_explored = 4;
+  bool            found          = 1;
+  repeated string path           = 2;
+  double          total_cost     = 3;
+  uint64          nodes_explored = 4;
 }
