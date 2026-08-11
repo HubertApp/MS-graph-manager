@@ -7,7 +7,7 @@ Pouvoir rechercher un itinéraire grâce à des coordonnées géographiques et �
 ## Prérequis
 
 - Python 3.10+
-- Docker (pour OSRM)
+- Docker (pour OSRM, et en option pour lancer le service lui-même en conteneur)
 
 ## Installation
 
@@ -30,7 +30,23 @@ Créer un fichier `.env` à la racine du projet :
 
 ```env
 OSRM_BASE_URL=http://localhost:5000
+TRAFFIC_INFO_URL=
+PREDICTIVE_INFO_URL=
+CPP_ROUTER_GRPC_TARGET=localhost:50051
+TRACKING_SERVICE_URL=
+OSMNX_GRAPH_MARGIN_M=1500
 ```
+
+Les URLs/adresses supplémentaires sont optionnelles :
+- si absentes, le service reste fonctionnel en mode local simplifié (facteurs = 1.0, calcul fallback Python)
+- si présentes, elles activent respectivement les ajustements trafic, prédictifs, la notification de suivi d'itinéraire
+- `CPP_ROUTER_GRPC_TARGET` pointe vers le service de routage C++ (gRPC, `host:port`) ; si injoignable, le calcul retombe automatiquement sur le plus court chemin déjà calculé localement (osmnx/OSRM)
+
+### Note sur OSMnx
+
+- `getItineraireFromTo` utilise en priorité un prégraph local OSMnx (bbox autour du trajet), puis calcule le plus court chemin pondéré.
+- si OSMnx est indisponible ou échoue sur la zone demandée, fallback automatique vers le flux OSRM existant.
+- `OSMNX_GRAPH_MARGIN_M` permet d'ajuster la taille de la zone chargée autour de la demande (plus grand = plus robuste, mais plus lourd).
 
 ## Lancement
 
@@ -67,6 +83,125 @@ uvicorn app.main:app --reload
 L'API est accessible sur : **http://localhost:8000**
 
 L'interface GraphQL (GraphiQL) est accessible sur : **http://localhost:8000/graphql**
+
+### 3. Alternative : lancer le service en conteneur
+
+```bash
+docker build -t ms-graph-manager .
+docker run -p 8003:80 --env-file .env ms-graph-manager
+```
+
+Ou via `docker-compose.yml` (service `graph-manager` + un service `osrm` optionnel, qui
+suppose des données déjà extraites dans `./osrm-data`, voir étape 1 ci-dessus) :
+
+```bash
+docker compose up --build
+```
+
+L'API est alors accessible sur **http://localhost:8003/graphql**.
+
+## Queries GraphQL principales
+
+### 1) Query historique (compatibilité)
+
+```graphql
+query {
+	route(fromLat: 49.1193, fromLon: 6.1757, toLat: 49.1096, toLon: 6.1825) {
+		distanceM
+		durationS
+	}
+}
+```
+
+### 2) Query cible: `getItineraireFromTo`
+
+```graphql
+query RouteMulticouche($request: RouteRequestDTO!, $frictions: [FrictionUpdateDTO!]) {
+	getItineraireFromTo(request: $request, frictionUpdates: $frictions) {
+		distanceM
+		durationS
+		traffic {
+			realtimeFactor
+			predictiveFactor
+			source
+		}
+		steps {
+			instruction
+			distanceM
+			durationS
+		}
+		segments {
+			type
+			osmIds
+			transitLineId
+			expectedArrival
+		}
+		graphSnapshot {
+			nodes {
+				id
+				lat
+				lon
+				isTransitStop
+			}
+			edges {
+				sourceId
+				targetId
+				weight
+				length
+				layer
+			}
+		}
+	}
+}
+```
+
+Variables:
+
+```json
+{
+	"request": {
+		"startPoint": {"lat": 49.1193, "lon": 6.1757},
+		"endPoint": {"lat": 49.1096, "lon": 6.1825},
+		"departureTime": "2026-03-18T08:30:00Z",
+		"routingProfile": "driving"
+	},
+	"frictions": [
+		{
+			"tileId": "49.12:6.18",
+			"frictionCoefficient": 1.15,
+			"sourceEvent": "road_work"
+		}
+	]
+}
+```
+
+### 3) Query optionnelle trafic
+
+```graphql
+query {
+	infoTrafic(fromLat: 49.1193, fromLon: 6.1757, toLat: 49.1096, toLon: 6.1825) {
+		realtimeFactor
+		predictiveFactor
+		source
+	}
+}
+```
+
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+Par défaut, `pytest` ne lance que les tests unitaires (tous les appels réseau/gRPC
+sont mockés — aucune dépendance externe requise). Le test d'intégration
+bout-en-bout (`tests/test_integration_live_graph.py`) appelle la vraie API
+Overpass et est exclu du run par défaut ; pour le lancer :
+
+```bash
+pytest -m integration
+```
 
 ## Structure du projet
 
