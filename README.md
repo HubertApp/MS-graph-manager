@@ -187,6 +187,22 @@ query {
 }
 ```
 
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+Par défaut, `pytest` ne lance que les tests unitaires (tous les appels réseau/gRPC
+sont mockés — aucune dépendance externe requise). Le test d'intégration
+bout-en-bout (`tests/test_integration_live_graph.py`) appelle la vraie API
+Overpass et est exclu du run par défaut ; pour le lancer :
+
+```bash
+pytest -m integration
+```
+
 ## Structure du projet
 
 ```
