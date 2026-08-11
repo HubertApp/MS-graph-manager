@@ -46,9 +46,10 @@ class EdgeDTO:
     edge_id: str  # Unique identifier (e.g., "osm_12345" or "gtfs_line_5_seg_2")
     source_id: str  # Matches the source NodeDTO.id
     target_id: str  # Matches the target NodeDTO.id
-    weight: float
-    length: float
+    weight: float  # SECONDES - cout de traversee ajuste (contrat gRPC)
+    length: float  # METRES - longueur physique
     layer: int
+    name: Optional[str] = None  # nom de voie, sert aux instructions
 
 
 @strawberry.type

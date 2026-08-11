@@ -1,8 +1,15 @@
 import math
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Sequence, Tuple
 
-from app.models.itinerary import EdgeDTO, NodeDTO, PathSegmentDTO, RoutingGraphSnapshot
+from app.models.itinerary import (
+    EdgeDTO,
+    FrontStepDTO,
+    NodeDTO,
+    PathSegmentDTO,
+    RoutingGraphSnapshot,
+)
 
 Coordinate = Tuple[float, float]
 
@@ -113,6 +120,7 @@ def build_multilayer_snapshot(
                 weight=weight,
                 length=length_m,
                 layer=layer,
+                name="Continue",
             )
         )
 
@@ -147,3 +155,73 @@ def build_path_segments(
         )
 
     return segments
+
+
+
+@dataclass(frozen=True)
+class RenderedPath:
+    """Traduction d'un chemin (ids de noeuds) en donnees pretes pour le front."""
+
+    selected_edges: List[EdgeDTO]
+    geometry_coordinates: List[List[float]]   # [[lon, lat], ...] format GeoJSON
+    front_steps: List[FrontStepDTO]
+    distance_m: float
+    duration_s: float
+
+
+def render_path(
+    snapshot: RoutingGraphSnapshot,
+    node_path: Sequence[str],
+) -> Optional[RenderedPath]:
+    """Traduit une suite d'ids de noeuds en aretes, geometrie et instructions.
+
+    Args:
+        snapshot: le graphe qui a servi a la resolution
+        node_path: ids de noeuds renvoyes par le C++, dans l'ordre
+
+    Returns:
+        RenderedPath, ou None si le chemin n'est pas reconstituable.
+    """
+    if len(node_path) < 2:
+        return None
+
+    # Index construits une seule fois : O(V + E) au lieu de O(V x E)
+    node_by_id = {node.id: node for node in snapshot.nodes}
+    edge_by_pair: Dict[Tuple[str, str], EdgeDTO] = {}
+    for edge in snapshot.edges:
+        pair = (edge.source_id, edge.target_id)
+        current = edge_by_pair.get(pair)
+        # aretes paralleles : on garde la moins couteuse
+        if current is None or edge.weight < current.weight:
+            edge_by_pair[pair] = edge
+
+    selected_edges: List[EdgeDTO] = []
+    for index in range(len(node_path) - 1):
+        edge = edge_by_pair.get((node_path[index], node_path[index + 1]))
+        if edge is None:
+            return None
+        selected_edges.append(edge)
+
+    geometry_coordinates: List[List[float]] = []
+    for node_id in node_path:
+        node = node_by_id.get(node_id)
+        if node is None:
+            return None
+        geometry_coordinates.append([node.lon, node.lat])
+
+    front_steps = [
+        FrontStepDTO(
+            instruction=edge.name or "Continue",
+            distance_m=edge.length,
+            duration_s=edge.weight,
+        )
+        for edge in selected_edges
+    ]
+
+    return RenderedPath(
+        selected_edges=selected_edges,
+        geometry_coordinates=geometry_coordinates,
+        front_steps=front_steps,
+        distance_m=sum(edge.length for edge in selected_edges),
+        duration_s=sum(edge.weight for edge in selected_edges),
+    )

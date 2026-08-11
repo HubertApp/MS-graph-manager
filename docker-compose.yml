@@ -1,24 +1,35 @@
 services:
+
   graph-manager:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: ms-graph-manager
+    labels:
+      logging: "promtail"
+      service: "graph-manager"
     ports:
-      - "8003:80"
+      - "3011:3011"
     environment:
+      PORT: 3011
+      LOG_LEVEL: INFO
+
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: graph-manager
+      OTEL_RESOURCE_ATTRIBUTES: service.name=graph-manager,deployment.environment=development
+
       OSRM_BASE_URL: http://osrm:5000
       TRAFFIC_INFO_URL: ${TRAFFIC_INFO_URL:-}
       PREDICTIVE_INFO_URL: ${PREDICTIVE_INFO_URL:-}
-      CPP_ROUTER_GRPC_TARGET: ${CPP_ROUTER_GRPC_TARGET:-host.docker.internal:50051}
+      CPP_ROUTER_GRPC_TARGET: ${CPP_ROUTER_GRPC_TARGET:-envoy:50051}
+      CPP_ROUTER_TIMEOUT_S: ${CPP_ROUTER_TIMEOUT_S:-10.0}
       TRACKING_SERVICE_URL: ${TRACKING_SERVICE_URL:-}
       OSMNX_GRAPH_MARGIN_M: ${OSMNX_GRAPH_MARGIN_M:-1500}
     networks:
+      - hubertapp-network
       - graph-manager-network
+      - astar-net
 
-  # Optionnel : nécessite des données déjà extraites (osrm-extract/partition/customize,
-  # voir README) déposées dans ./osrm-data. Sans ce service, le fallback OSRM
-  # échoue simplement et le calcul repose entièrement sur osmnx.
   osrm:
     image: osrm/osrm-backend
     container_name: ms-graph-manager-osrm
@@ -32,5 +43,12 @@ services:
       - graph-manager-network
 
 networks:
+  hubertapp-network:
+    external: true
+
   graph-manager-network:
     driver: bridge
+
+  astar-net:
+    external: true
+    name: astar-net

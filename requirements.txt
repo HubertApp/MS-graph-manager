@@ -8,3 +8,14 @@ scikit-learn
 grpcio
 grpcio-tools
 protobuf
+pytest
+pytest-asyncio
+
+
+opentelemetry-sdk
+opentelemetry-exporter-otlp-proto-grpc
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-httpx
+opentelemetry-instrumentation-grpc
+opentelemetry-instrumentation-logging
+opentelemetry-instrumentation-system-metrics

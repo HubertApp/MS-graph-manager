@@ -13,5 +13,5 @@ htmlcov/
 .idea/
 .env
 .env.*
-tests/
+<!-- tests/ -->
 README.md
