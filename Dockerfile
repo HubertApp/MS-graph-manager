@@ -1,16 +1,20 @@
-FROM python:3.13-slim-bookworm
+FROM python:3.12-slim-bookworm
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PORT=3011
 
 RUN apt-get update && apt-get install --no-install-recommends -y \
         build-essential curl && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /project
+WORKDIR /app
 
-COPY requirements.txt ./
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
 
-EXPOSE 80
+EXPOSE 3011
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]

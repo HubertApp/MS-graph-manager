@@ -36,3 +36,9 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+# osmnx Overpass response cache
+cache/
+
+# Claude Code local session data
+.claude/

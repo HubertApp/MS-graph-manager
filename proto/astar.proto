@@ -1,0 +1,33 @@
+syntax = "proto3";
+package astar.proto;
+
+
+service AStarService {
+  rpc Solve (SolveRequest) returns (SolveResponse);
+}
+
+message Node {
+  string id  = 1;
+  double lat = 2;
+  double lon = 3; 
+}
+
+message Edge {
+  string from_id = 1;
+  string to_id   = 2;
+  double weight  = 3;
+}
+
+message SolveRequest {
+  repeated Node nodes    = 1;
+  repeated Edge edges    = 2;
+  string        start_id = 3;
+  string        goal_id  = 4;
+}
+
+message SolveResponse {
+  bool            found          = 1;
+  repeated string path           = 2;
+  double          total_cost     = 3;
+  uint64          nodes_explored = 4;
+}
