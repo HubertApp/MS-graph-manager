@@ -89,7 +89,10 @@ async def _build_graph(
 @strawberry.type
 class RouteQuery:
 
-    @strawberry.field
+    # Renommé depuis "route" : collision de composition fédérée avec
+    # Query.route(id) de service-aom-agregator (une ligne de transport GTFS,
+    # concept différent d'un calcul d'itinéraire point à point).
+    @strawberry.field(name="computeRoute")
     async def route(
         self, from_lat: float, from_lon: float, to_lat: float, to_lon: float
     ) -> Optional[Route]:
