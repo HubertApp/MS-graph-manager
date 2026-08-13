@@ -104,9 +104,13 @@ L'API est alors accessible sur **http://localhost:8003/graphql**.
 
 ### 1) Query historique (compatibilité)
 
+Renommée `computeRoute` (anciennement `route`) pour éviter une collision de
+composition fédérée avec `Query.route(id)` de service-aom-agregator (une
+ligne de transport GTFS, concept différent).
+
 ```graphql
 query {
-	route(fromLat: 49.1193, fromLon: 6.1757, toLat: 49.1096, toLon: 6.1825) {
+	computeRoute(fromLat: 49.1193, fromLon: 6.1757, toLat: 49.1096, toLon: 6.1825) {
 		distanceM
 		durationS
 	}
