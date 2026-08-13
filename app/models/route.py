@@ -15,7 +15,11 @@ class Geometry:
     type: str
 
 
-@strawberry.type
+# Nommé "ComputedRoute" (pas "Route") : collision de composition fédérée
+# avec le type Route (ligne de transport GTFS) de service-aom-agregator —
+# même nom, aucun champ commun, pas de @key, donc federation ne peut pas les
+# fusionner.
+@strawberry.type(name="ComputedRoute")
 class Route:
     distance_m: float
     duration_s: float
