@@ -50,6 +50,7 @@ class EdgeDTO:
     length: float  # METRES - longueur physique
     layer: int
     name: Optional[str] = None  # nom de voie, sert aux instructions
+    transit_line_id: Optional[str] = None  # route_id GTFS si l'arete est un trajet en transit
 
 
 @strawberry.type

@@ -25,6 +25,12 @@ services:
       CPP_ROUTER_TIMEOUT_S: ${CPP_ROUTER_TIMEOUT_S:-10.0}
       TRACKING_SERVICE_URL: ${TRACKING_SERVICE_URL:-}
       OSMNX_GRAPH_MARGIN_M: ${OSMNX_GRAPH_MARGIN_M:-1500}
+
+      AOM_GRAPHQL_URL: ${AOM_GRAPHQL_URL:-http://ms-aom-agregator-api:80/graphql}
+      TRANSIT_NETWORK_IDS: ${TRANSIT_NETWORK_IDS:-}
+      TRANSIT_ACCESS_RADIUS_M: ${TRANSIT_ACCESS_RADIUS_M:-400}
+      TRANSIT_FETCH_TIMEOUT_S: ${TRANSIT_FETCH_TIMEOUT_S:-30.0}
+      RABBITMQ_URL: ${RABBITMQ_URL:-}
     networks:
       - hubert-network
       - graph-manager-network
