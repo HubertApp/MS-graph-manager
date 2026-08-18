@@ -3,7 +3,11 @@ from typing import List, Optional, Tuple
 
 import strawberry
 
-from app.config import OSMNX_GRAPH_MARGIN_M
+from app.config import (
+    OSMNX_GRAPH_MARGIN_M,
+    TRANSIT_ACCESS_RADIUS_M,
+    TRANSIT_NETWORK_IDS,
+)
 from app.models.itinerary import (
     FrictionUpdateDTO,
     ItineraryResultDTO,
@@ -19,11 +23,42 @@ from app.services.graph_engine import (
     render_path,
 )
 from app.services.itinerary_tracking import notify_tracking_service
+from app.services.layer_merge import merge_transit_layer
 from app.services.osmnx_graph import build_osmnx_snapshot
 from app.services.osrm_client import fetch_route
 from app.services.traffic_client import get_predictive_factor, get_realtime_factor
+from app.services.transit_graph_client import get_transit_layer
 
 logger = logging.getLogger(__name__)
+
+TRANSIT_PROFILES = {"transit", "multimodal"}
+
+
+async def _attach_transit(
+    snapshot: RoutingGraphSnapshot, road_graph, request: RouteRequestDTO
+) -> RoutingGraphSnapshot:
+    if request.routing_profile.lower() not in TRANSIT_PROFILES:
+        return snapshot
+    if not TRANSIT_NETWORK_IDS:
+        return snapshot
+
+    try:
+        import osmnx as ox
+    except ImportError:
+        return snapshot
+
+    for network_id in TRANSIT_NETWORK_IDS:
+        layer = await get_transit_layer(network_id, request.departure_time)
+        if layer is None:
+            continue
+        snapshot = merge_transit_layer(
+            road_snapshot=snapshot,
+            road_graph=road_graph,
+            transit=layer,
+            access_radius_m=TRANSIT_ACCESS_RADIUS_M,
+            ox=ox,
+        )
+    return snapshot
 
 
 async def _build_graph(
@@ -50,8 +85,11 @@ async def _build_graph(
         margin_m=OSMNX_GRAPH_MARGIN_M,
     )
     if osmnx_result:
+        snapshot = await _attach_transit(
+            osmnx_result["snapshot"], osmnx_result["graph"], request
+        )
         return (
-            osmnx_result["snapshot"],
+            snapshot,
             osmnx_result["start_node_id"],
             osmnx_result["end_node_id"],
         )

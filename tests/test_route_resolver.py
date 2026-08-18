@@ -64,6 +64,7 @@ def graphe_disponible(monkeypatch):
             "snapshot": _snapshot(),
             "start_node_id": "A",
             "end_node_id": "D",
+            "graph": None,
         },
     )
 
@@ -112,9 +113,13 @@ async def test_expose_les_facteurs_trafic(graphe_disponible, routeur_repond):
 
 
 @pytest.mark.asyncio
-async def test_produit_un_segment_par_arete(graphe_disponible, routeur_repond):
+async def test_regroupe_les_aretes_homogenes_en_un_segment(graphe_disponible, routeur_repond):
+    """Depuis l'etape 7b : un segment par troncon homogene (meme type, meme
+    ligne), pas un segment par arete. e_AB et e_BD sont toutes deux layer=1
+    (route) sans transit_line_id : elles fusionnent en un seul segment."""
     result = await RouteQuery().get_itineraire_from_to(_request())
-    assert len(result.segments) == 2
+    assert len(result.segments) == 1
+    assert result.segments[0].type == "road"
 
 
 @pytest.mark.asyncio

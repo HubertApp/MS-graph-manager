@@ -12,16 +12,18 @@ PROFILE_TO_NETWORK_TYPE = {
     "walking": "walk",
     "cycling": "bike",
     "driving": "drive",
-    "transit": "drive",
-    "multimodal": "drive",
+    "transit": "walk",
+    "multimodal": "walk",
 }
 
 DEFAULT_PROFILE_SPEEDS_MPS = {
     "walking": 1.4,
     "cycling": 4.2,
     "driving": 13.9,
-    "transit": 8.3,
-    "multimodal": 7.0,
+    # La VOIRIE se parcourt a pied en profil transit/multimodal : c'est le
+    # vehicule (via la couche transit fusionnee) qui va vite, pas le trottoir.
+    "transit": 1.4,
+    "multimodal": 1.4,
 }
 
 
@@ -67,7 +69,7 @@ def _infer_speed_mps(edge_data: Dict, routing_profile: str) -> float:
     )
 
 
-def _build_nodes(graph, layer: int) -> Tuple[List[NodeDTO], Dict[int, int], List[int]]:
+def _build_nodes(graph) -> Tuple[List[NodeDTO], Dict[int, int], List[int]]:
     node_ids = list(graph.nodes())
     node_index_map = {node_id: index for index, node_id in enumerate(node_ids)}
 
@@ -79,7 +81,7 @@ def _build_nodes(graph, layer: int) -> Tuple[List[NodeDTO], Dict[int, int], List
                 id=f"osm:{node_id}",
                 lat=float(node_data["y"]),
                 lon=float(node_data["x"]),
-                is_transit_stop=(layer == 2 and node_index_map[node_id] % 11 == 0),
+                is_transit_stop=False,
             )
         )
 
@@ -212,8 +214,11 @@ def build_osmnx_snapshot(
         logger.warning("osmnx nearest_nodes failed; falling back to OSRM", exc_info=True)
         return None
 
-    layer = 2 if routing_profile.lower() in {"transit", "multimodal"} else 1
-    nodes, _, _ = _build_nodes(graph, layer)
+    # layer=1 : la voirie OSM est toujours une arete "route", quel que soit le
+    # profil demande. La couche 2 (transit) est ajoutee par la fusion avec la
+    # couche GTFS (app/services/layer_merge.py), pas ici.
+    layer = 1
+    nodes, _, _ = _build_nodes(graph)
     edges, _, _ = _build_edges(
         graph=graph,
         routing_profile=routing_profile,
@@ -234,4 +239,5 @@ def build_osmnx_snapshot(
         "snapshot": RoutingGraphSnapshot(nodes=nodes, edges=edges),
         "start_node_id": f"osm:{start_node}",
         "end_node_id": f"osm:{end_node}",
+        "graph": graph,
     }
