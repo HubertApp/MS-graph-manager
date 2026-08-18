@@ -127,31 +127,49 @@ def build_multilayer_snapshot(
     return RoutingGraphSnapshot(nodes=nodes, edges=edges)
 
 
+def _osm_ids_of(edge: EdgeDTO) -> List[int]:
+    """Extrait les identifiants OSM d'un edge_id de la forme osm_{u}_{v}_{key}."""
+    if not edge.edge_id.startswith("osm_"):
+        return []
+    parts = edge.edge_id.split("_")
+    return [int(part) for part in parts[1:3] if part.isdigit()]
+
+
+def _segment_kind(edge: EdgeDTO) -> str:
+    if edge.layer == 2:
+        return "transit"
+    if edge.layer == 3:
+        return "connection"
+    return "road"
+
+
 def build_path_segments(
     edges: Sequence[EdgeDTO],
     departure_time: datetime,
     routing_profile: str,
 ) -> List[PathSegmentDTO]:
-    if not edges:
-        return []
-
-    is_transit = routing_profile.lower() in {"transit", "multimodal"}
-    segment_type = "transit" if is_transit else "road"
-
+    """Un segment par tronçon homogene, pas un segment par arete."""
     segments: List[PathSegmentDTO] = []
     cumulative_seconds = 0.0
+    current_key = None
 
-    for index, edge in enumerate(edges):
+    for edge in edges:
         cumulative_seconds += edge.weight
-        expected_arrival = departure_time + timedelta(seconds=cumulative_seconds)
+        kind = _segment_kind(edge)
+        key = (kind, edge.transit_line_id)
 
-        segments.append(
-            PathSegmentDTO(
-                type=segment_type,
-                osm_ids=[index],
-                transit_line_id=(f"LINE-{edge.layer}" if is_transit else None),
-                expected_arrival=expected_arrival,
-            )
+        if key != current_key:
+            segments.append(PathSegmentDTO(
+                type=kind,
+                osm_ids=[],
+                transit_line_id=edge.transit_line_id,
+                expected_arrival=departure_time + timedelta(seconds=cumulative_seconds),
+            ))
+            current_key = key
+
+        segments[-1].osm_ids.extend(_osm_ids_of(edge))
+        segments[-1].expected_arrival = (
+            departure_time + timedelta(seconds=cumulative_seconds)
         )
 
     return segments
