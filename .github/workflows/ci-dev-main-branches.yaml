@@ -1,43 +1,78 @@
-# name: "CI Main & Develop branches"
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: "CI Main & Develop branches"
 
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths-ignore:
+      - '**.md'
 
-# on:
-#   push:
-#     branches:
-#       - main
-#       - develop
-#   pull_request:
-#     branches:
-#       - main
-#       - develop
-#     paths-ignore:
-#       - '**.md'
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
-# jobs:
-#   quality-gate:
-#     runs-on: ubuntu-latest
-#     steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v4
-#         with:
-#           fetch-depth: 0
+jobs:
+  quality-gate:
+    name: Lint, tests & couverture
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-#       - name: Setup Python
-#         uses: actions/setup-python@v4
-#         with:
-#           python-version: '3.11'
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: '.python-version'
+          cache: 'pip'
+          cache-dependency-path: requirements-dev.txt
 
-#       - name: Cache pip
-#         uses: actions/cache@v4
-#         with:
-#           path: ~/.cache/pip
-#           key: "${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}"
+      - name: Install, Lint and Test
+        run: make validate
 
-#       - name: Install, Lint and Test
-#         run: make validate
+      - name: Upload rapport de coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-${{ github.sha }}
+          path: |
+            coverage.xml
+            .coverage
+          retention-days: 7
 
-#       - name: SonarCloud Scan
-#         uses: SonarSource/sonarcloud-github-action@v1
-#         env:
-#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  build-and-push:
+    name: Docker build & push
+    needs: quality-gate
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # L'étiquette :<sha> est ce qui rend un retour arrière possible : chaque
+      # image est rattachée de façon immuable à un commit. Le nom d'image doit
+      # correspondre à CE service — une étiquette recopiée d'un autre dépôt
+      # écraserait son image sur le registre.
+      - name: Build and push MS-graph-manager
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/ms-graph-manager:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/ms-graph-manager:${{ github.sha }}

@@ -1,0 +1,8 @@
+[run]
+source = app
+# Stubs générés par protoc : leur couverture mesure la qualité de protoc,
+# pas la nôtre, et fait baisser artificiellement le total du service.
+omit = app/proto/*
+
+[report]
+show_missing = True
