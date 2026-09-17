@@ -1,7 +1,6 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from app.services import graph_engine
-from app.models.itinerary import EdgeDTO
 
 
 def test_haversine_and_tile_id():
