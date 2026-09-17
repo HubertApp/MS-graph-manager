@@ -9,24 +9,29 @@ on:
     paths-ignore:
       - '**.md'
 
+# Un nouveau push sur une branche déjà en cours de test annule le run précédent,
+# pour ne pas empiler les jobs sur une série de commits rapprochés.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
+    name: Lint & tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # python-version-file lit .python-version : une seule source de vérité,
+      # partagée avec le Dockerfile, plutôt qu'une version en dur qui redérive.
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          python-version-file: '.python-version'
+          cache: 'pip'
+          cache-dependency-path: requirements-dev.txt
 
       - name: Install, Lint et Test
-        run: |
-          make validate
+        run: make validate

@@ -13,5 +13,8 @@ htmlcov/
 .idea/
 .env
 .env.*
-<!-- tests/ -->
+# tests/ volontairement non exclu : le Dockerfile ne copie que app/
 README.md
+.ruff_cache/
+coverage.xml
+requirements*.in
