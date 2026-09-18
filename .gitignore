@@ -42,3 +42,7 @@ cache/
 
 # Claude Code local session data
 .claude/
+
+# Rapports de couverture et cache du linter
+coverage.xml
+.ruff_cache/

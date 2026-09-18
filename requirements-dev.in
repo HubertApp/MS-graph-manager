@@ -1,0 +1,20 @@
+# Outillage de développement et de CI. La contrainte -c fige les dépendances
+# partagées sur la résolution d'exécution : l'environnement de test utilise
+# exactement les versions qui tourneront en production.
+#   pip-compile requirements-dev.in
+-c requirements.txt
+-r requirements.in
+
+pytest
+pytest-asyncio
+pytest-cov
+respx
+
+# Régénération des stubs gRPC (outil, pas dépendance d'exécution).
+grpcio-tools
+
+# Épinglé strictement : le jeu de règles par défaut de ruff évolue d'une version
+# à l'autre, une version flottante rendrait la CI rouge sans changement de code.
+# Même version que MS-aom-agregator, pour que les deux services soient jugés
+# avec les mêmes règles.
+ruff==0.14.10

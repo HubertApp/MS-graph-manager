@@ -1,0 +1,3 @@
+# app/proto/ contient les stubs générés par protoc depuis proto/astar.proto.
+# Les linter n'a pas de sens : le code est régénéré, pas édité.
+extend-exclude = ["app/proto"]

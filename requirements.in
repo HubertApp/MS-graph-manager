@@ -1,0 +1,29 @@
+# Dépendances directes d'exécution. Ce fichier se modifie à la main ;
+# requirements.txt en est la compilation épinglée (voir README §9).
+#   pip-compile requirements.in
+fastapi
+uvicorn
+strawberry-graphql
+httpx
+python-dotenv
+
+# Construction du graphe routier. scikit-learn est une dépendance optionnelle
+# d'osmnx, utilisée pour la recherche du nœud le plus proche (KDTree) : elle
+# n'est jamais importée par notre code mais osmnx échoue sans elle.
+osmnx
+scikit-learn
+
+# Client gRPC du routeur A* C++. grpcio-tools n'est PAS ici : il ne sert qu'à
+# régénérer app/proto/ depuis proto/astar.proto, ce qui est une tâche de
+# développement — les stubs générés sont versionnés.
+grpcio
+protobuf
+
+# Observabilité (cf. app/otel_setup.py)
+opentelemetry-sdk
+opentelemetry-exporter-otlp-proto-grpc
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-httpx
+opentelemetry-instrumentation-grpc
+opentelemetry-instrumentation-logging
+opentelemetry-instrumentation-system-metrics
