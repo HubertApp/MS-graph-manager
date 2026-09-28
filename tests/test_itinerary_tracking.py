@@ -42,6 +42,7 @@ def _make_itinerary() -> ItineraryResultDTO:
         ],
         graph_snapshot=RoutingGraphSnapshot(nodes=[], edges=[]),
         traffic=TrafficInfoDTO(realtime_factor=1.0, predictive_factor=1.0, source="traffic+predictive"),
+        geojson={"type": "FeatureCollection", "features": []},
     )
 
 

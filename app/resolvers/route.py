@@ -1,5 +1,7 @@
 import logging
 from typing import List, Optional, Tuple
+from app.services.geojson import rendered_path_to_geojson
+
 
 import strawberry
 
@@ -194,6 +196,7 @@ class RouteQuery:
                 predictive_factor=predictive_factor,
                 source="traffic+predictive",
             ),
+            geojson=rendered_path_to_geojson(rendered, request.routing_profile),
         )
 
         await notify_tracking_service(request, itinerary)
