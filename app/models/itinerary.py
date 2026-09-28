@@ -2,7 +2,10 @@
 from datetime import datetime
 from typing import List, Optional
 
+
 import strawberry
+
+from strawberry.scalars import JSON
 
 from app.models.route import Geometry
 
@@ -94,3 +97,12 @@ class ItineraryResultDTO:
     segments: List[PathSegmentDTO]
     graph_snapshot: RoutingGraphSnapshot
     traffic: TrafficInfoDTO
+    geojson: JSON = strawberry.field(
+        description=(
+            "Obliger de convertir les instructions en GeoJSON pour MapBox"
+            "FeatureCollection GeoJSON, coordonnées [lon, lat]. "
+            "Chaque Feature porte properties.kind : 'route' (LineString du tracé), "
+            "'step' (Point de départ d'une instruction, aligné sur steps par "
+            "properties.step_index), 'start' et 'end'. Inclut une bbox."
+        )
+    )
