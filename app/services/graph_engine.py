@@ -10,6 +10,8 @@ from app.models.itinerary import (
     PathSegmentDTO,
     RoutingGraphSnapshot,
 )
+from app.services.instructions import build_instructions, edge_kind
+from app.services.routing_graph import PathEdge, as_routing_graph
 
 Coordinate = Tuple[float, float]
 
@@ -74,7 +76,13 @@ def build_multilayer_snapshot(
     friction_by_tile: Optional[Dict[str, float]] = None,
     realtime_factor: float = 1.0,
     predictive_factor: float = 1.0,
+    names: Optional[Sequence[Optional[str]]] = None,
 ) -> RoutingGraphSnapshot:
+    """Chaine lineaire ponderee (repli OSRM).
+
+    `names[i]` est le nom de la voie du segment coordinates[i] -> [i+1] ; il
+    permet aux instructions de nommer les rues ("Tournez a droite sur ...").
+    """
     if not coordinates:
         return RoutingGraphSnapshot(nodes=[], edges=[])
 
@@ -120,49 +128,77 @@ def build_multilayer_snapshot(
                 weight=weight,
                 length=length_m,
                 layer=layer,
-                name="Continue",
+                # Nom de voie issu des etapes OSRM ; None si inconnu, les
+                # instructions decrivent alors la direction sans nommer la rue.
+                name=(names[index] or None) if names and index < len(names) else None,
             )
         )
 
     return RoutingGraphSnapshot(nodes=nodes, edges=edges)
 
 
+def _osm_ids_of(edge) -> List[int]:
+    """Identifiants OSM d'un edge_id de la forme osm_{u}_{v}_{key}."""
+    if not edge.edge_id.startswith("osm_"):
+        return []
+    parts = edge.edge_id.split("_")
+    return [int(part) for part in parts[1:3] if part.isdigit()]
+
+
+def _segment_kind(edge) -> str:
+    """road | transit | connection. Accepte un PathEdge ou un EdgeDTO."""
+    if isinstance(edge, PathEdge):
+        kind = edge_kind(edge)
+        if kind == "ride":
+            return "transit"
+        return "road" if kind == "road" else "connection"
+    if edge.layer == 2:
+        return "transit"
+    if edge.layer == 3:
+        return "connection"
+    return "road"
+
+
 def build_path_segments(
-    edges: Sequence[EdgeDTO],
+    edges: Sequence,
     departure_time: datetime,
     routing_profile: str,
 ) -> List[PathSegmentDTO]:
-    if not edges:
-        return []
+    """Un segment par troncon homogene (meme type, meme ligne), pas par arete.
 
-    is_transit = routing_profile.lower() in {"transit", "multimodal"}
-    segment_type = "transit" if is_transit else "road"
-
+    `expected_arrival` est l'heure prevue en fin de segment.
+    """
     segments: List[PathSegmentDTO] = []
     cumulative_seconds = 0.0
+    current_key = None
 
-    for index, edge in enumerate(edges):
+    for edge in edges:
         cumulative_seconds += edge.weight
-        expected_arrival = departure_time + timedelta(seconds=cumulative_seconds)
+        kind = _segment_kind(edge)
+        key = (kind, edge.transit_line_id)
 
-        segments.append(
-            PathSegmentDTO(
-                type=segment_type,
-                osm_ids=[index],
-                transit_line_id=(f"LINE-{edge.layer}" if is_transit else None),
-                expected_arrival=expected_arrival,
-            )
-        )
+        if key != current_key:
+            segments.append(PathSegmentDTO(
+                type=kind,
+                osm_ids=[],
+                transit_line_id=edge.transit_line_id,
+                expected_arrival=departure_time + timedelta(seconds=cumulative_seconds),
+            ))
+            current_key = key
+
+        for osm_id in _osm_ids_of(edge):
+            if not segments[-1].osm_ids or segments[-1].osm_ids[-1] != osm_id:
+                segments[-1].osm_ids.append(osm_id)
+        segments[-1].expected_arrival = departure_time + timedelta(seconds=cumulative_seconds)
 
     return segments
-
 
 
 @dataclass(frozen=True)
 class RenderedPath:
     """Traduction d'un chemin (ids de noeuds) en donnees pretes pour le front."""
 
-    selected_edges: List[EdgeDTO]
+    selected_edges: List[PathEdge]
     geometry_coordinates: List[List[float]]   # [[lon, lat], ...] format GeoJSON
     front_steps: List[FrontStepDTO]
     distance_m: float
@@ -170,14 +206,17 @@ class RenderedPath:
 
 
 def render_path(
-    snapshot: RoutingGraphSnapshot,
+    graph,
     node_path: Sequence[str],
+    routing_profile: str = "driving",
 ) -> Optional[RenderedPath]:
     """Traduit une suite d'ids de noeuds en aretes, geometrie et instructions.
 
     Args:
-        snapshot: le graphe qui a servi a la resolution
+        graph: le graphe qui a servi a la resolution (RoutingGraph, ou
+            RoutingGraphSnapshot pour compatibilite)
         node_path: ids de noeuds renvoyes par le C++, dans l'ordre
+        routing_profile: profil de la demande, fixe le mode des etapes a pied/velo/voiture
 
     Returns:
         RenderedPath, ou None si le chemin n'est pas reconstituable.
@@ -185,38 +224,13 @@ def render_path(
     if len(node_path) < 2:
         return None
 
-    # Index construits une seule fois : O(V + E) au lieu de O(V x E)
-    node_by_id = {node.id: node for node in snapshot.nodes}
-    edge_by_pair: Dict[Tuple[str, str], EdgeDTO] = {}
-    for edge in snapshot.edges:
-        pair = (edge.source_id, edge.target_id)
-        current = edge_by_pair.get(pair)
-        # aretes paralleles : on garde la moins couteuse
-        if current is None or edge.weight < current.weight:
-            edge_by_pair[pair] = edge
+    selected_edges = as_routing_graph(graph).resolve_path(node_path)
+    if selected_edges is None:
+        return None
 
-    selected_edges: List[EdgeDTO] = []
-    for index in range(len(node_path) - 1):
-        edge = edge_by_pair.get((node_path[index], node_path[index + 1]))
-        if edge is None:
-            return None
-        selected_edges.append(edge)
-
-    geometry_coordinates: List[List[float]] = []
-    for node_id in node_path:
-        node = node_by_id.get(node_id)
-        if node is None:
-            return None
-        geometry_coordinates.append([node.lon, node.lat])
-
-    front_steps = [
-        FrontStepDTO(
-            instruction=edge.name or "Continue",
-            distance_m=edge.length,
-            duration_s=edge.weight,
-        )
-        for edge in selected_edges
-    ]
+    geometry_coordinates, front_steps = build_instructions(selected_edges, routing_profile)
+    if len(geometry_coordinates) < 2:
+        return None
 
     return RenderedPath(
         selected_edges=selected_edges,

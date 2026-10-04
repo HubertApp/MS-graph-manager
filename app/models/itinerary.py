@@ -53,6 +53,7 @@ class EdgeDTO:
     length: float  # METRES - longueur physique
     layer: int
     name: Optional[str] = None  # nom de voie, sert aux instructions
+    transit_line_id: Optional[str] = None  # route_id GTFS si l'arete est un trajet en transit
 
 
 @strawberry.type
@@ -73,10 +74,57 @@ class PathSegmentDTO:
 
 @strawberry.type
 class FrontStepDTO:
-    """Front-friendly step instruction."""
+    """Instruction pas-a-pas, prete a afficher.
+
+    Les trois premiers champs sont historiques ; les suivants sont facultatifs
+    et suivent le vocabulaire de l'API Directions de Mapbox (maneuver/modifier)
+    pour que le front puisse choisir une icone et centrer la carte.
+    """
     instruction: str
     distance_m: float
     duration_s: float
+    maneuver: str = strawberry.field(
+        default="continue",
+        description=(
+            "depart | turn | new name | roundabout | arrive | "
+            "walk to stop | board | alight"
+        ),
+    )
+    modifier: Optional[str] = strawberry.field(
+        default=None,
+        description=(
+            "straight | slight left | left | sharp left | slight right | "
+            "right | sharp right | uturn"
+        ),
+    )
+    street_name: Optional[str] = None
+    mode: str = strawberry.field(
+        default="driving", description="walking | cycling | driving | transit"
+    )
+    location: Optional[List[float]] = strawberry.field(
+        default=None, description="Point de la manoeuvre, [lon, lat]"
+    )
+    bearing_before: Optional[float] = None
+    bearing_after: Optional[float] = None
+    geometry_start: Optional[int] = strawberry.field(
+        default=None,
+        description="Index dans geometry.coordinates du debut du troncon de l'etape",
+    )
+    geometry_end: Optional[int] = strawberry.field(
+        default=None,
+        description="Index dans geometry.coordinates de la fin du troncon de l'etape",
+    )
+    detail: Optional[str] = strawberry.field(
+        default=None, description="Precision secondaire (arrets, attente...)"
+    )
+    transit_line_id: Optional[str] = None
+    line_name: Optional[str] = None
+    line_color: Optional[str] = None
+    line_type: Optional[str] = strawberry.field(
+        default=None, description="bus | tram | metro | train | ferry | ..."
+    )
+    headsign: Optional[str] = None
+    stop_count: Optional[int] = None
 
 
 @strawberry.type

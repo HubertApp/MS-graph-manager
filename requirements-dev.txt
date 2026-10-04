@@ -4,6 +4,14 @@
 #
 #    pip-compile --output-file=requirements-dev.txt --strip-extras requirements-dev.in
 #
+aio-pika==9.6.2
+    # via
+    #   -c requirements.txt
+    #   faststream
+aiormq==6.9.4
+    # via
+    #   -c requirements.txt
+    #   aio-pika
 annotated-doc==0.0.5
     # via
     #   -c requirements.txt
@@ -15,6 +23,8 @@ annotated-types==0.8.0
 anyio==4.15.1
     # via
     #   -c requirements.txt
+    #   fast-depends
+    #   faststream
     #   httpx
     #   starlette
 asgiref==3.12.1
@@ -47,7 +57,15 @@ cross-web==0.7.0
     # via
     #   -c requirements.txt
     #   strawberry-graphql
+fast-depends==3.0.9
+    # via
+    #   -c requirements.txt
+    #   faststream
 fastapi==0.141.1
+    # via
+    #   -c requirements.txt
+    #   -r requirements.in
+faststream==0.6.7
     # via
     #   -c requirements.txt
     #   -r requirements.in
@@ -91,12 +109,17 @@ idna==3.19
     #   anyio
     #   httpx
     #   requests
+    #   yarl
 iniconfig==2.3.0
     # via pytest
 joblib==1.6.0
     # via
     #   -c requirements.txt
     #   scikit-learn
+multidict==7.0.0
+    # via
+    #   -c requirements.txt
+    #   yarl
 narwhals==2.26.0
     # via
     #   -c requirements.txt
@@ -108,6 +131,7 @@ networkx==3.6.1
 numpy==2.5.3
     # via
     #   -c requirements.txt
+    #   -r requirements.in
     #   geopandas
     #   osmnx
     #   pandas
@@ -208,6 +232,10 @@ packaging==26.3
     #   pyogrio
     #   pytest
     #   strawberry-graphql
+pamqp==3.3.0
+    # via
+    #   -c requirements.txt
+    #   aiormq
 pandas==3.0.5
     # via
     #   -c requirements.txt
@@ -217,6 +245,10 @@ pluggy==1.6.0
     # via
     #   pytest
     #   pytest-cov
+propcache==0.5.4
+    # via
+    #   -c requirements.txt
+    #   yarl
 protobuf==7.36.1
     # via
     #   -c requirements.txt
@@ -231,6 +263,7 @@ psutil==7.2.2
 pydantic==2.13.5
     # via
     #   -c requirements.txt
+    #   fast-depends
     #   fastapi
 pydantic-core==2.46.5
     # via
@@ -279,6 +312,7 @@ scikit-learn==1.9.1
 scipy==1.18.1
     # via
     #   -c requirements.txt
+    #   -r requirements.in
     #   scikit-learn
 shapely==2.1.2
     # via
@@ -306,7 +340,9 @@ typing-extensions==4.16.0
     #   -c requirements.txt
     #   anyio
     #   cross-web
+    #   fast-depends
     #   fastapi
+    #   faststream
     #   grpcio
     #   opentelemetry-api
     #   opentelemetry-exporter-otlp-proto-grpc
@@ -337,6 +373,11 @@ wrapt==2.4.1
     #   opentelemetry-instrumentation
     #   opentelemetry-instrumentation-grpc
     #   opentelemetry-instrumentation-httpx
+yarl==1.25.1
+    # via
+    #   -c requirements.txt
+    #   aio-pika
+    #   aiormq
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
